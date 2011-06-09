@@ -17,6 +17,8 @@
 
 #include <boost/thread.hpp>
 
+#include <iostream>
+
 using namespace cv;
 using namespace urbi;
 using namespace std;
