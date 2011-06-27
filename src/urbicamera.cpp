@@ -123,8 +123,8 @@ void UCamera::init(int id) {
 }
 
 void UCamera::grabImageThreadFunction() {
-    cerr << "UCamera::grabImageThreadFunction()" << endl
-            << "\tThread started" << endl;
+//    cerr << "UCamera::grabImageThreadFunction()" << endl
+//            << "\tThread started" << endl;
     try {
         while (true) {
             // Set interruption point
@@ -134,8 +134,8 @@ void UCamera::grabImageThreadFunction() {
             ++mFrame;
             // Try to populate data
             if (grabImageMutex.try_lock()) {
-                cerr << "UCamera::grabImageThreadFunction()" << endl
-                        << "\tPopulating retrieved image nr " << mFrame << endl;
+//                cerr << "UCamera::grabImageThreadFunction()" << endl
+//                        << "\tPopulating retrieved image nr " << mFrame << endl;
                 videoCapture.retrieve(mMatImage);
                 cvtColor(mMatImage, mMatImage, CV_BGR2RGB);
                 grabImageCond.notify_one();
@@ -143,8 +143,8 @@ void UCamera::grabImageThreadFunction() {
             }
         }
     } catch (boost::thread_interrupted&) {
-        cerr << "UCamera::grabImageThreadFunction()" << endl
-                << "\tThread stopped" << endl;
+//        cerr << "UCamera::grabImageThreadFunction()" << endl
+//                << "\tThread stopped" << endl;
         videoCapture.release();
         return;
     }
@@ -153,12 +153,12 @@ void UCamera::grabImageThreadFunction() {
 void UCamera::getImage(UVar& val) {
     lock_guard<mutex> lock(getValMutex);
     if (!mGetNewFrame) {
-        cerr << "UCamera:getVal()" << endl
-                << "\tThere is no need to get new image" << endl;
+//        cerr << "UCamera:getVal()" << endl
+//                << "\tThere is no need to get new image" << endl;
     } else {
         mGetNewFrame = false;
-        cerr << "UCamera:getVal()" << endl
-                << "\tThere is need to get new image" << endl;
+//        cerr << "UCamera:getVal()" << endl
+//                << "\tThere is need to get new image" << endl;
 
         grabImageCond.wait(grabImageMutexLock);
         mBinImage.image.data = mMatImage.data;
