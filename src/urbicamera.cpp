@@ -9,8 +9,6 @@
  ********************************************/
 
 #include <urbi/uobject.hh>
-#include <urbi/uconversion.hh>
-#include <urbi/uabstractclient.hh>
 
 #include <cv.h>
 #include <highgui.h>
@@ -42,15 +40,15 @@ private:
     UVar height;
     UVar fps;
 
-    bool mGetNewFrame;
-    unsigned int mFrame;
-    unsigned int mAccessFrame;
+    bool mGetNewFrame; //
+    unsigned int mFrame; // ID of already grabed frame
+    unsigned int mAccessFrame; // ID of already retrieved frame
 
     // Called on access.
-    void getImage(UVar&);
-
-    // Storage for last captured image. 
-    UBinary mBinImage;
+    void getImage();
+    
+    //
+    void notifyNewImage(bool);
 
     // Access object to camera
     VideoCapture videoCapture;
@@ -66,20 +64,23 @@ private:
     boost::condition_variable grabImageCond;
     boost::unique_lock<mutex> grabImageMutexLock;
 
+    // Storage for last captured image. 
+    UBinary mBinImage;
     Mat mMatImage;
 
     void fpsChanged();
 };
 
 UCamera::UCamera(const std::string& s) : grabImageMutexLock(grabImageMutex), urbi::UObject(s) {
-    cerr << "UCamera::UCamera(" << s << ")" << endl;
     UBindFunction(UCamera, init);
 }
 
 UCamera::~UCamera() {
-    cerr << "UCamera::~UCamera()" << endl;
     grabImageThread.interrupt();
     grabImageThread.join();
+    // Prevent from double free
+    if (mMatImage.data == mBinImage.image.data)
+        mBinImage.image.data = NULL;
 }
 
 void UCamera::init(int id) {
@@ -91,11 +92,15 @@ void UCamera::init(int id) {
     if (!videoCapture.open(id))
         throw runtime_error("Failed to initialize camera");
 
-    //Bind all variables
+    // Bind all variables
     UBindVar(UCamera, image);
     UBindVar(UCamera, width);
     UBindVar(UCamera, height);
     UBindVar(UCamera, fps);
+    
+    // Bind all functions
+    UBindFunction(UCamera, getImage);
+    UBindFunction(UCamera, notifyNewImage);
 
     // Notify if fps changed
     UNotifyChange(fps, &UCamera::fpsChanged);
@@ -105,7 +110,7 @@ void UCamera::init(int id) {
     width = mMatImage.cols;
     height = mMatImage.rows;
 
-    cerr << "\tRetreived image size: x=" << width.as<int>() << " y=" << height.as<int>() << endl;
+    cerr << "\tImage size: x=" << width.as<int>() << " y=" << height.as<int>() << endl;
 
     UNotifyAccess(image, &UCamera::getImage);
 
@@ -123,19 +128,15 @@ void UCamera::init(int id) {
 }
 
 void UCamera::grabImageThreadFunction() {
-//    cerr << "UCamera::grabImageThreadFunction()" << endl
-//            << "\tThread started" << endl;
+    cerr << "UCamera::grabImageThreadFunction()" << endl
+            << "\tThread started" << endl;
     try {
         while (true) {
-            // Set interruption point
             this_thread::interruption_point();
-            // Grab image from camera
             videoCapture.grab();
             ++mFrame;
             // Try to populate data
             if (grabImageMutex.try_lock()) {
-//                cerr << "UCamera::grabImageThreadFunction()" << endl
-//                        << "\tPopulating retrieved image nr " << mFrame << endl;
                 videoCapture.retrieve(mMatImage);
                 cvtColor(mMatImage, mMatImage, CV_BGR2RGB);
                 grabImageCond.notify_one();
@@ -143,27 +144,34 @@ void UCamera::grabImageThreadFunction() {
             }
         }
     } catch (boost::thread_interrupted&) {
-//        cerr << "UCamera::grabImageThreadFunction()" << endl
-//                << "\tThread stopped" << endl;
+        cerr << "UCamera::grabImageThreadFunction()" << endl
+                << "\tThread stopped" << endl;
         videoCapture.release();
         return;
     }
 }
 
-void UCamera::getImage(UVar& val) {
+void UCamera::getImage() {
+    // Lock access to this method from urbi
     lock_guard<mutex> lock(getValMutex);
-    if (!mGetNewFrame) {
-//        cerr << "UCamera:getVal()" << endl
-//                << "\tThere is no need to get new image" << endl;
-    } else {
+    
+    // If there is new frame
+    if(mGetNewFrame) {
         mGetNewFrame = false;
-//        cerr << "UCamera:getVal()" << endl
-//                << "\tThere is need to get new image" << endl;
 
         grabImageCond.wait(grabImageMutexLock);
         mBinImage.image.data = mMatImage.data;
-        val = mBinImage;
     }
+    
+    // Copy frame to an external variable
+    image = mBinImage;
+}
+
+void UCamera::notifyNewImage(bool notify) {
+    if(notify)
+        UNotifyAccess(image, &UCamera::getImage);
+    else
+        image.unnotify();
 }
 
 int UCamera::update() {
