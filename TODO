@@ -1,0 +1,5 @@
+- poprawić cmake aby poprawnie wyszukiwał cv (np. brakuje cvaux)
+- dodać detektor twarzy
+- zbudowac paczke debiana
+
+- Jak ma się zabezpieczenie dostępu do zmiennej w przypadku notifyaccess.

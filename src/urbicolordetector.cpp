@@ -29,9 +29,9 @@ public:
     
 private:
     void changeScale(UVar&); // change scale function
-    void changeMode(UVar&); // change mode function
-    void setColor(int, int, int, int, int, int); // change mode function
-    void newImage(UVar&); // image processing function
+    void notifyNewImage(bool); // change mode function
+    void setColor(int, int, int, int, int, int); // change color
+    void detectColorFrom(UVar&); // image processing function
 
     // Temporary variables for image processing function
     Mat mResultImage;
@@ -39,6 +39,7 @@ private:
     Mat mHSVImage;
     Mat mThresholdImage;
     
+    // Color in HSV representation
     Scalar hsv_min;
     Scalar hsv_max;
     
@@ -65,7 +66,14 @@ UColorDetector::UColorDetector(const string& s) : urbi::UObject(s) {
     UBindFunction(UColorDetector, init);
 }
 
-UColorDetector::~UColorDetector() {}
+UColorDetector::~UColorDetector() {
+    // Prevent of double free error
+    if(mBinImage.image.data == mResultImage.data)
+        mBinImage.image.data = 0;
+    
+    if(mInputImage)
+        delete mInputImage;
+}
 
 int UColorDetector::init(UVar& sourceImage) {
     // Bind all urbi variables
@@ -82,8 +90,9 @@ int UColorDetector::init(UVar& sourceImage) {
             image);
 
     // Bind functions
-    UBindThreadedFunction(UColorDetector, newImage, LOCK_INSTANCE);
+    UBindThreadedFunction(UColorDetector, detectColorFrom, LOCK_INSTANCE);
     UBindFunction(UColorDetector, setColor);
+    UBindFunction(UColorDetector, notifyNewImage);
     
     mBinImage.type = BINARY_IMAGE;
     mBinImage.image.imageFormat = IMAGE_RGB;
@@ -100,8 +109,8 @@ int UColorDetector::init(UVar& sourceImage) {
     hsv_min = hsv_max = Scalar(0, 0, 0, 0);
 
     mInputImage = new UVar(sourceImage);
-    UNotifyChange(mode, &UColorDetector::changeMode);
-    UNotifyChange(*mInputImage, &UColorDetector::newImage);
+    UNotifyChange(mode, &UColorDetector::notifyNewImage);
+    UNotifyChange(*mInputImage, &UColorDetector::detectColorFrom);
     
     return 0;
 }
@@ -114,24 +123,14 @@ void UColorDetector::setColor(int H_min, int H_max, int S_min, int S_max, int V_
     hsv_max = Scalar(H_max * 180 / 255, S_max, V_max, 0);
 }
 
-void UColorDetector::changeMode(UVar&) {
-    switch (mode.as<int>()) {
-        case 0:
-            mInputImage->unnotify();
-            break;
-        case 1:
-            // Notiffy source
-            UNotifyChange(*mInputImage, &UColorDetector::newImage);
-            break;
-        case 2:
-            // Notiffy input port
-            mInputImage->unnotify();
-            break;
-    }
+void UColorDetector::notifyNewImage(bool notify) {
+    // Always unnotify
+    mInputImage->unnotify();
+    if (notify)
+        UNotifyChange(*mInputImage, &UColorDetector::detectColorFrom);
 }
 
-void UColorDetector::newImage(UVar& src) {
-    cerr << "UColorDetector::newImage" << endl;
+void UColorDetector::detectColorFrom(UVar& src) {
     // Copy image
     UImage uImage = src;
     
@@ -142,15 +141,15 @@ void UColorDetector::newImage(UVar& src) {
     resize(processImage, mResultImage, Size(), scale.as<double>(), scale.as<double>(), INTER_LINEAR);
 
     // ...to measure all processing time
-    int64 t = getTickCount();
+    int64 startTick = getTickCount();
     
     // Copy image to mMatImage as grayscaled image
     cvtColor(mResultImage, mGrayscaleImage, CV_RGB2GRAY);
     cvtColor(mGrayscaleImage, mResultImage, CV_GRAY2RGB);
 
     // Compute fps - algorithm efficency
-    fps = static_cast<double>(getTickFrequency()) / (t - mLastTick);
-    mLastTick = t;
+    fps = static_cast<double>(getTickFrequency()) / (startTick - mLastTick);
+    mLastTick = startTick;
 
     // Convert From RGB to HSV color space
     cvtColor(processImage, mHSVImage, CV_RGB2HSV);
@@ -188,12 +187,12 @@ void UColorDetector::newImage(UVar& src) {
     line(mResultImage, Point(0, mResultImage.rows/2), Point(mResultImage.cols, mResultImage.rows/2), Scalar(100, 100, 100), 1);
     line(mResultImage, Point(mResultImage.cols/2, 0), Point(mResultImage.cols/2, mResultImage.rows), Scalar(100, 100, 100), 1);
     
+    // Copy mResult image to UImage
     mBinImage.image.width = mResultImage.cols;
     mBinImage.image.height = mResultImage.rows;
     mBinImage.image.size = mResultImage.cols * mResultImage.rows * 3;
     mBinImage.image.data = mResultImage.data;
     image = mBinImage;
-    cerr << "UColorDetector::newImage end" << endl;
 }
 
 UStart(UColorDetector);

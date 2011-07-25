@@ -161,17 +161,16 @@ void UCamera::getImage() {
 
         grabImageCond.wait(grabImageMutexLock);
         mBinImage.image.data = mMatImage.data;
+        // Copy frame to an external variable
+        image = mBinImage;
     }
-    
-    // Copy frame to an external variable
-    image = mBinImage;
 }
 
 void UCamera::notifyNewImage(bool notify) {
+    image.unnotify();
     if(notify)
         UNotifyAccess(image, &UCamera::getImage);
-    else
-        image.unnotify();
+        
 }
 
 int UCamera::update() {
