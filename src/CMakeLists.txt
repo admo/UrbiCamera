@@ -9,9 +9,11 @@ include_directories (${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${URBI_INCLUDE
 
 add_library (urbicamera SHARED urbicamera.cpp)
 add_library (urbicolordetector SHARED urbicolordetector.cpp)
+add_library (urbiobjectdetector SHARED urbiobjectdetector.cpp)
 
 target_link_libraries (urbicamera ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries (urbicolordetector ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries (urbiobjectdetector ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
 
 set_target_properties (urbicamera PROPERTIES
   VERSION 0.0.1
@@ -20,5 +22,9 @@ set_target_properties (urbicamera PROPERTIES
 set_target_properties (urbicolordetector PROPERTIES
   VERSION 0.0.1
   SOVERSION 0.0.1)
+
+set_target_properties (urbiobjectdetector PROPERTIES
+  VERSION 0.0.1
+  SOVERSION 0.0.1)
   
-install (TARGETS urbicamera urbicolordetector DESTINATION lib COMPONENT libraries)
+install (TARGETS urbicamera urbicolordetector urbiobjectdetector DESTINATION lib COMPONENT libraries)

@@ -39,6 +39,7 @@ private:
     UVar width;
     UVar height;
     UVar fps;
+    UVar notifyImage;
 
     bool mGetNewFrame; //
     unsigned int mFrame; // ID of already grabed frame
@@ -48,7 +49,7 @@ private:
     void getImage();
     
     //
-    void notifyNewImage(bool);
+    void changeNotifyImage();
 
     // Access object to camera
     VideoCapture videoCapture;
@@ -97,13 +98,14 @@ void UCamera::init(int id) {
     UBindVar(UCamera, width);
     UBindVar(UCamera, height);
     UBindVar(UCamera, fps);
+    UBindVar(Ucamera, notifyImage);
     
     // Bind all functions
     UBindFunction(UCamera, getImage);
-    UBindFunction(UCamera, notifyNewImage);
 
     // Notify if fps changed
     UNotifyChange(fps, &UCamera::fpsChanged);
+    UNotifyChange(notifyImage, &UCamera::changeNotifyImage);
 
     // Get image size
     videoCapture >> mMatImage;
@@ -166,11 +168,11 @@ void UCamera::getImage() {
     }
 }
 
-void UCamera::notifyNewImage(bool notify) {
+void UCamera::changeNotifyImage() {
+    // Always unnotify
     image.unnotify();
-    if(notify)
-        UNotifyAccess(image, &UCamera::getImage);
-        
+    if(notifyImage.as<bool>())
+        UNotifyAccess(image, &UCamera::getImage);  
 }
 
 int UCamera::update() {
