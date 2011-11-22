@@ -1,3 +1,9 @@
+liburbicamera2.7 (0.0.1-0ubuntu0ppa4~lucid1) lucid; urgency=low
+
+  * Poprawki typow
+
+ -- Adam Oleksy <adam.oleksy@pwr.wroc.pl>  Tue, 22 Nov 2011 16:02:00 +0100
+
 liburbicamera2.7 (0.0.1-0ubuntu0ppa3~lucid1) lucid; urgency=low
 
   * Poprawki typow
