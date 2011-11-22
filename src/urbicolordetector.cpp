@@ -28,9 +28,12 @@ public:
     int init(UVar& sourceImage); // init object
     
 private:
-    void changeNotifyImage(); // change mode function
+    void changeNotifyImage(UVar&); // change mode function
+    void changeScale(UVar&);
     void setColor(int, int, int, int, int, int); // change color
+    void SetColor(int, int, int, int, int, int); // change color
     void detectFrom(UVar&); // image processing function
+    void SetImage(UVar&);
 
     // Temporary variables for image processing function
     Mat mResultImage;
@@ -43,6 +46,7 @@ private:
 
     // Variables definig the class states
     UVar notifyImage;
+    UVar mode;
     UVar visible; // if object is visible
     UVar x; // position in x of the object center
     UVar y; // position in y of the object center
@@ -79,11 +83,14 @@ int UColorDetector::init(UVar& sourceImage) {
             x,
             y,
             notifyImage,
+            mode,
             image);
 
     // Bind functions
     UBindThreadedFunction(UColorDetector, detectFrom, LOCK_INSTANCE);
+    UBindThreadedFunction(UColorDetector, SetImage, LOCK_INSTANCE);
     UBindFunction(UColorDetector, setColor);
+    UBindFunction(UColorDetector, SetColor);
     
     mBinImage.type = BINARY_IMAGE;
     mBinImage.image.imageFormat = IMAGE_RGB;
@@ -101,6 +108,8 @@ int UColorDetector::init(UVar& sourceImage) {
     mInputImage = new UVar(sourceImage);
     UNotifyChange(*mInputImage, &UColorDetector::detectFrom);
     UNotifyChange(notifyImage, &UColorDetector::changeNotifyImage);
+    UNotifyChange(mode, &UColorDetector::changeNotifyImage);
+    UNotifyChange(scale, &UColorDetector::changeScale);
     
     return 0;
 }
@@ -113,11 +122,22 @@ void UColorDetector::setColor(int H_min, int H_max, int S_min, int S_max, int V_
     hsv_max = Scalar(H_max * 180 / 255, S_max, V_max, 0);
 }
 
-void UColorDetector::changeNotifyImage() {
+void UColorDetector::SetColor(int H_min, int H_max, int S_min, int S_max, int V_min, int V_max) {
+    setColor(H_min, H_max, S_min, S_max, V_min, V_max);
+}
+
+void UColorDetector::changeNotifyImage(UVar& var) {
     // Always unnotify
     mInputImage->unnotify();
-    if (notifyImage.as<bool>())
+    if (var.as<bool>())
         UNotifyChange(*mInputImage, &UColorDetector::detectFrom);
+}
+
+void UColorDetector::changeScale(UVar& newScale) {
+    double tmp = newScale.as<double>();
+    tmp = tmp > 1.0 ? tmp : 1.0;
+    
+    scale = tmp;
 }
 
 void UColorDetector::detectFrom(UVar& src) {
@@ -128,10 +148,10 @@ void UColorDetector::detectFrom(UVar& src) {
     Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
 
     // Resize image
-    Mat resizedImage;
-    resize(processImage, resizedImage, Size(), scale.as<double>(), scale.as<double>(), INTER_LINEAR);
-    width = mResultImage.cols;
-    height = mResultImage.rows;
+    Mat resizedImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);
+    resize(processImage, resizedImage, resizedImage.size(), 0, 0, INTER_LINEAR);
+    width = resizedImage.cols;
+    height = resizedImage.rows;
     
     // Copy image to mMatImage as grayscaled image
     Mat grayscaleImage;
@@ -187,6 +207,10 @@ void UColorDetector::detectFrom(UVar& src) {
     mBinImage.image.size = mResultImage.cols * mResultImage.rows * 3;
     mBinImage.image.data = mResultImage.data;
     image = mBinImage;
+}
+
+void UColorDetector::SetImage(UVar& var) {
+    detectFrom(var);
 }
 
 UStart(UColorDetector);
