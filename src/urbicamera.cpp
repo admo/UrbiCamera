@@ -40,6 +40,12 @@ private:
     UVar height;
     UVar fps;
     UVar notifyImage;
+    UVar flipImage;
+    bool mFlipImage;
+
+    //Nieużywane
+    UVar cvImgNotify;
+    UVar uImgNotify;
 
     bool mGetNewFrame; //
     unsigned int mFrame; // ID of already grabed frame
@@ -47,9 +53,11 @@ private:
 
     // Called on access.
     void getImage();
+    void GetImage();
     
     //
-    void changeNotifyImage();
+    void changeNotifyImage(UVar&);
+    void changeFlipImage();
 
     // Access object to camera
     VideoCapture videoCapture;
@@ -89,6 +97,7 @@ void UCamera::init(int id) {
     // Urbi constructor
     mGetNewFrame = true;
     mFrame = mAccessFrame = 0;
+    mFlipImage = 0;
 
     if (!videoCapture.open(id))
         throw runtime_error("Failed to initialize camera");
@@ -99,13 +108,21 @@ void UCamera::init(int id) {
     UBindVar(UCamera, height);
     UBindVar(UCamera, fps);
     UBindVar(Ucamera, notifyImage);
+    UBindVar(UCamera, flipImage);
+    UBindVar(UCamera, cvImgNotify);
+    UBindVar(UCamera, uImgNotify);
+    flipImage = 0;
     
     // Bind all functions
-    UBindFunction(UCamera, getImage);
+    UBindThreadedFunction(UCamera, getImage, LOCK_INSTANCE);
+    UBindThreadedFunction(UCamera, GetImage, LOCK_INSTANCE);
 
     // Notify if fps changed
     UNotifyChange(fps, &UCamera::fpsChanged);
     UNotifyChange(notifyImage, &UCamera::changeNotifyImage);
+    UNotifyChange(cvImgNotify, &UCamera::changeNotifyImage);
+    UNotifyChange(uImgNotify, &UCamera::changeNotifyImage);
+    UNotifyChange(flipImage, &UCamera::changeFlipImage);
 
     // Get image size
     videoCapture >> mMatImage;
@@ -140,6 +157,11 @@ void UCamera::grabImageThreadFunction() {
             // Try to populate data
             if (grabImageMutex.try_lock()) {
                 videoCapture.retrieve(mMatImage);
+                if (mFlipImage) {
+                    Mat tmp;
+                    flip(mMatImage, tmp, -1);
+                    transpose(tmp, mMatImage);
+                }
                 cvtColor(mMatImage, mMatImage, CV_BGR2RGB);
                 grabImageCond.notify_one();
                 grabImageMutex.unlock();
@@ -168,11 +190,22 @@ void UCamera::getImage() {
     }
 }
 
-void UCamera::changeNotifyImage() {
+void UCamera::GetImage() {
+    getImage();
+}
+
+void UCamera::changeNotifyImage(UVar& var) {
     // Always unnotify
     image.unnotify();
-    if(notifyImage.as<bool>())
+    if(var.as<bool>())
         UNotifyAccess(image, &UCamera::getImage);  
+}
+
+
+void UCamera::changeFlipImage() {
+    mFlipImage = flipImage.as<bool>();
+    mBinImage.image.width = mFlipImage ? height.as<size_t > () : width.as<size_t > ();
+    mBinImage.image.height = mFlipImage ? width.as<size_t > () : height.as<size_t > ();
 }
 
 int UCamera::update() {
