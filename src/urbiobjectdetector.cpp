@@ -37,8 +37,8 @@ private:
     void changeNotifyImage(UVar&); // change mode function
     void changeHaarCascade();
     void changeScale(UVar&);
-    void detectFrom(UVar); // image processing function
-    void SetImage(UVar&);
+    void detectFrom(UImage); // image processing function
+    void SetImage(UImage&);
     
     // Urbi variables
     // Results
@@ -134,9 +134,9 @@ void UObjectDetector::changeScale(UVar& newScale) {
     scale = tmp;
 }
 
-void UObjectDetector::detectFrom(UVar src) {
+void UObjectDetector::detectFrom(UImage src) {
     // Build MatImage with data from uImage
-    Mat processImage(Size(src.width, src.height), CV_8UC3, src.data);
+    Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
     
     // Resize image
     Mat smallImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);
@@ -196,7 +196,7 @@ void UObjectDetector::detectFrom(UVar src) {
     image = mBinImage;
 }
 
-void UObjectDetector::SetImage(UVar& var) {
+void UObjectDetector::SetImage(UImage& var) {
     detectFrom(var);
 }
 

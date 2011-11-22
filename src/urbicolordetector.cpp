@@ -32,8 +32,8 @@ private:
     void changeScale(UVar&);
     void setColor(int, int, int, int, int, int); // change color
     void SetColor(int, int, int, int, int, int); // change color
-    void detectFrom(UVar); // image processing function
-    void SetImage(UVar&);
+    void detectFrom(UImage); // image processing function
+    void SetImage(UImage&);
 
     // Temporary variables for image processing function
     Mat mResultImage;
@@ -140,7 +140,7 @@ void UColorDetector::changeScale(UVar& newScale) {
     scale = tmp;
 }
 
-void UColorDetector::detectFrom(UVar src) {
+void UColorDetector::detectFrom(UImage src) {
     // Build MatImage with data from uImage
     Mat processImage(Size(src.width, src.height), CV_8UC3, src.data);
 
@@ -206,7 +206,7 @@ void UColorDetector::detectFrom(UVar src) {
     image = mBinImage;
 }
 
-void UColorDetector::SetImage(UVar& var) {
+void UColorDetector::SetImage(UImage& var) {
     detectFrom(var);
 }
 
