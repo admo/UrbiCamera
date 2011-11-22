@@ -32,7 +32,7 @@ private:
     void changeScale(UVar&);
     void setColor(int, int, int, int, int, int); // change color
     void SetColor(int, int, int, int, int, int); // change color
-    void detectFrom(UVar&); // image processing function
+    void detectFrom(UVar); // image processing function
     void SetImage(UVar&);
 
     // Temporary variables for image processing function
@@ -140,12 +140,9 @@ void UColorDetector::changeScale(UVar& newScale) {
     scale = tmp;
 }
 
-void UColorDetector::detectFrom(UVar& src) {
-    // Copy image
-    UImage uImage = src;
-    
+void UColorDetector::detectFrom(UVar src) {
     // Build MatImage with data from uImage
-    Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
+    Mat processImage(Size(src.width, src.height), CV_8UC3, src.data);
 
     // Resize image
     Mat resizedImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);

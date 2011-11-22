@@ -1,3 +1,9 @@
+liburbicamera2.7 (0.0.1-0ubuntu0ppa2~lucid1) lucid; urgency=low
+
+  * Zmiana przekazywania obrazu do detektorów, teraz przez wartosc
+
+ -- Adam Oleksy <adam.oleksy@pwr.wroc.pl>  Tue, 22 Nov 2011 15:53:15 +0100
+
 liburbicamera2.7 (0.0.1-0ubuntu0ppa1~lucid1) lucid; urgency=low
 
   * Initial release
