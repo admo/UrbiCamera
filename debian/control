@@ -1,0 +1,27 @@
+Source: liburbicamera2.7
+Priority: extra
+Maintainer: Adam Oleksy <adam.oleksy@pwr.wroc.pl>
+Build-Depends: debhelper (>= 7.0.50~), cmake, libboost-dev, urbi2.7-dev, libcv-dev, libcvaux-dev, libhighgui-dev
+Standards-Version: 3.9.1
+Section: libs
+
+Package: liburbicamera2.7
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: liburbicolordetector2.7
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: liburbiobjectdetector2.7
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
