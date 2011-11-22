@@ -136,7 +136,7 @@ void UObjectDetector::changeScale(UVar& newScale) {
 
 void UObjectDetector::detectFrom(UImage src) {
     // Build MatImage with data from uImage
-    Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
+    Mat processImage(Size(src.width, src.height), CV_8UC3, src.data);
     
     // Resize image
     Mat smallImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);
@@ -198,7 +198,7 @@ void UObjectDetector::detectFrom(UImage src) {
 
 void UObjectDetector::SetImage(UImage src) {
     // Build MatImage with data from uImage
-    Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
+    Mat processImage(Size(src.width, src.height), CV_8UC3, src.data);
     
     // Resize image
     Mat smallImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);
