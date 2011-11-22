@@ -26,7 +26,7 @@ public:
     UObjectDetector(const string&);
     ~UObjectDetector();
     
-    int init(UVar& sourceImage, const string& cascadeFiles);
+    int init(UVar& sourceImage);
     
 private:
     cv::CascadeClassifier mCVCascade;
@@ -34,9 +34,11 @@ private:
     int64 mLastTick;
     
     // Urbi functions
-    void changeNotifyImage(); // change mode function
+    void changeNotifyImage(UVar&); // change mode function
     void changeHaarCascade();
+    void changeScale(UVar&);
     void detectFrom(UVar&); // image processing function
+    void SetImage(UVar&);
     
     // Urbi variables
     // Results
@@ -54,6 +56,7 @@ private:
     UVar width; // image width
     UVar height; // image height
     UVar notifyImage; // process new images;
+    UVar mode;
 };
 
 UObjectDetector::UObjectDetector(const string& s) : UObject(s) {
@@ -69,7 +72,7 @@ UObjectDetector::~UObjectDetector() {
         delete mInputImage;
 }
 
-int UObjectDetector::init(UVar& sourceImage, const string& cascadeFile) {
+int UObjectDetector::init(UVar& sourceImage) {
     // Bind all urbi variables
     UBindVars(UObjectDetector,
             number,
@@ -83,10 +86,11 @@ int UObjectDetector::init(UVar& sourceImage, const string& cascadeFile) {
             width,
             height,
             notifyImage,
-            cascade);
+            mode);
     
     // Bind functions
     UBindThreadedFunction(UObjectDetector, detectFrom, LOCK_INSTANCE);
+    UBindThreadedFunction(UObjectDetector, SetImage, LOCK_INSTANCE);
     
     mBinImage.type = BINARY_IMAGE;
     mBinImage.image.imageFormat = IMAGE_RGB;
@@ -98,22 +102,21 @@ int UObjectDetector::init(UVar& sourceImage, const string& cascadeFile) {
     scale = 1;
     height = -1;
     width = -1;
-    cascade = cascadeFile;
     
     mInputImage = new UVar(sourceImage);
     UNotifyChange(*mInputImage, &UObjectDetector::detectFrom);
     UNotifyChange(notifyImage, &UObjectDetector::changeNotifyImage);
+    UNotifyChange(mode, &UObjectDetector::changeNotifyImage);
     UNotifyChange(cascade, &UObjectDetector::changeHaarCascade);
-    
-    changeHaarCascade();
+    UNotifyChange(scale, &UObjectDetector::changeScale);
     
     return 0;
 }
 
-void UObjectDetector::changeNotifyImage() {
+void UObjectDetector::changeNotifyImage(UVar& var) {
     // Always unnotify
     mInputImage->unnotify();
-    if (notifyImage.as<bool>())
+    if (var.as<bool>())
         UNotifyChange(*mInputImage, &UObjectDetector::detectFrom);
 }
 
@@ -124,6 +127,13 @@ void UObjectDetector::changeHaarCascade() {
     cerr << "New " << cascade.as<string>() << " loaded." << endl;
 }
 
+void UObjectDetector::changeScale(UVar& newScale) {
+    double tmp = newScale.as<double>();
+    tmp = tmp > 1.0 ? tmp : 1.0;
+    
+    scale = tmp;
+}
+
 void UObjectDetector::detectFrom(UVar& src) {
     // Copy image
     UImage uImage = src;
@@ -132,9 +142,13 @@ void UObjectDetector::detectFrom(UVar& src) {
     Mat processImage(Size(uImage.width, uImage.height), CV_8UC3, uImage.data);
     
     // Resize image
-    resize(processImage, mResultImage, Size(), scale.as<double>(), scale.as<double>(), INTER_LINEAR);
+    Mat smallImage(cvRound(processImage.rows/scale.as<double>()), cvRound(processImage.cols/scale.as<double>()), CV_8UC1);
+    resize(processImage, mResultImage, smallImage.size(), 0, 0, INTER_LINEAR);
     width = mResultImage.cols;
     height = mResultImage.rows;
+    
+    cvtColor(mResultImage, smallImage, CV_RGB2GRAY);
+    equalizeHist(smallImage, smallImage);
     
     if(mCVCascade.empty()) {
         throw std::runtime_error("Cascade classifier not loaded");
@@ -145,7 +159,7 @@ void UObjectDetector::detectFrom(UVar& src) {
         mLastTick = startTick;
         
         vector<Rect> objects;
-        mCVCascade.detectMultiScale(mResultImage, objects, 1.1, 2, 0, Size(30, 30));
+        mCVCascade.detectMultiScale(smallImage, objects, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
         
         if(!objects.empty()) {
             //TODO wykorzystać boost??
@@ -183,6 +197,10 @@ void UObjectDetector::detectFrom(UVar& src) {
     mBinImage.image.size = mResultImage.cols * mResultImage.rows * 3;
     mBinImage.image.data = mResultImage.data;
     image = mBinImage;
+}
+
+void UObjectDetector::SetImage(UVar& var) {
+    detectFrom(var);
 }
 
 UStart(UObjectDetector);
