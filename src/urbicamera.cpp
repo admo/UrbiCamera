@@ -152,7 +152,10 @@ void UCamera::grabImageThreadFunction() {
     try {
         while (true) {
             this_thread::interruption_point();
-            videoCapture.grab();
+            if (!videoCapture.grab()) {
+				this_thread::sleep(posix_time::milliseconds(15));
+				continue;
+			}
             ++mFrame;
             // Try to populate data
             if (grabImageMutex.try_lock()) {
