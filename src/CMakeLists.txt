@@ -16,10 +16,12 @@ endif (WIN32)
 add_library (ucamera SHARED urbicamera.cpp)
 add_library (ucolordetector SHARED urbicolordetector.cpp)
 add_library (uobjectdetector SHARED urbiobjectdetector.cpp)
+add_library (umovedetector SHARED urbimovedetector.cpp)
 
 target_link_libraries (ucamera ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries (ucolordetector ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries (uobjectdetector ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries (umovedetector ${OpenCV_LIBS} ${URBI_LIBRARIES} ${Boost_LIBRARIES})
 
 set_target_properties (ucamera PROPERTIES
   VERSION 0.0.1
@@ -32,5 +34,9 @@ set_target_properties (ucolordetector PROPERTIES
 set_target_properties (uobjectdetector PROPERTIES
   VERSION 0.0.1
   SOVERSION 0.0.1)
+
+set_target_properties (umovedetector PROPERTIES
+  VERSION 0.0.1
+  SOVERSION 0.0.1)
   
-install (TARGETS ucamera ucolordetector uobjectdetector DESTINATION lib/gostai/uobjects COMPONENT libraries)
+install (TARGETS ucamera ucolordetector uobjectdetector umovedetector DESTINATION lib/gostai/uobjects COMPONENT libraries)
