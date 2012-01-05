@@ -29,6 +29,8 @@
 
 #include <boost/circular_buffer.hpp>
 
+#include <iostream>
+
 using namespace cv;
 using namespace std;
 using namespace urbi;
@@ -154,6 +156,7 @@ void UMoveDetector::changeImageBufferSize(UVar& newBufferSize) {
 	imageBufferSize = tmp;
 	frameBuffer = tmp;
 	mImageBuffer.resize(tmp);
+	mImageBuffer.clear();
 	return;
 }
 
@@ -169,31 +172,38 @@ void UMoveDetector::detectFrom(UImage sourceImage) {
 	width = resizedImage.cols;
 	height = resizedImage.rows;
 
+	if (resizedImage.size() != mMHI.size()) {
+		mMHI = Mat::zeros(resizedImage.size(), CV_32F);
+	}
+
 	// Copy image to mMatImage as grayscaled image
 	Mat grayscaleImage;
 	cvtColor(resizedImage, grayscaleImage, CV_RGB2GRAY);
 	cvtColor(grayscaleImage, mResultImage, CV_GRAY2RGB);
 	mImageBuffer.push_back(grayscaleImage);
 
-	if (mImageBuffer.size() != imageBufferSize.as<int>())
+	if (!mImageBuffer.full())
 		return;
 
 	//Compute fps - algorithm efficency
 	int64 startTick = getTickCount();
 	fps = static_cast<double>(getTickFrequency()) / (startTick - mLastTick);
 	mLastTick = startTick;
+	double timestamp = (double) mLastTick / getTickFrequency();
 
 	Mat silh;
 	absdiff(mImageBuffer.front(), mImageBuffer.back(), silh);
 	threshold(silh, silh, diffThreshold.as<double>(), 1, CV_THRESH_BINARY);
-	updateMotionHistory(silh, mMHI, mLastTick / getTickFrequency(),
-			duration.as<double>());
+	updateMotionHistory(silh, mMHI, timestamp, duration.as<double>());
 
 	Mat thresholdImage;
-	threshold(mMHI, thresholdImage, 1, 255, CV_THRESH_BINARY);
+	mMHI.convertTo(thresholdImage, CV_8U, 255. / duration.as<double>(),
+			(duration.as<double>() - timestamp) * 255. / duration.as<double>());
+	threshold(thresholdImage, thresholdImage, 1, 255, CV_THRESH_BINARY);
 	medianBlur(thresholdImage, thresholdImage, smooth.as<int>());
 
-	add(mResultImage, resizedImage, mResultImage, thresholdImage);
+	Mat_<Vec3b> greenImage(thresholdImage.size(), Vec3b(255,0,0));
+	add(greenImage, mResultImage, mResultImage, thresholdImage);
 
 	// Compute center of the position
 	cv::Moments computedMoments(moments(thresholdImage));
