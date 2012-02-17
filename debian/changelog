@@ -1,3 +1,9 @@
+liburbicamera2.7 (0.0.1-0ubuntu0ppa6~lucid1) lucid; urgency=low
+
+  * Poprawienie zależności czasu budowania
+
+ -- Adam Oleksy <adam.oleksy@pwr.wroc.pl>  Fri, 17 Feb 2012 13:11:30 +0100
+
 liburbicamera2.7 (0.0.1-0ubuntu0ppa5~lucid1) lucid; urgency=low
 
   * Przekompilowanie dla nowej wersji urbi
