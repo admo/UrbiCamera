@@ -3,7 +3,7 @@ set(URBI_ROOT_DIR "/usr" CACHE PATH "Urbi root directory.")
 find_package (OpenCV REQUIRED)
 find_package (Urbi REQUIRED)
 find_package (PkgConfig REQUIRED)
-find_package (Boost REQUIRED thread date_time)
+find_package (Boost REQUIRED thread)
 
 #pkg_check_modules (facet REQUIRED facet)
 
