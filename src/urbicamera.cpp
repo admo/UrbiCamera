@@ -39,13 +39,9 @@ private:
     UVar width;
     UVar height;
     UVar fps;
-    UVar notifyImage;
-    UVar flipImage;
-    bool mFlipImage;
-
-    //Nieużywane
-    UVar cvImgNotify;
-    UVar uImgNotify;
+    UVar notify;
+    UVar flip;
+    enum {flipD0, flipD90, flipD180, flipD270} mFlipImage;
 
     bool mGetNewFrame; //
     unsigned int mFrame; // ID of already grabed frame
@@ -97,7 +93,7 @@ void UCamera::init(int id) {
     // Urbi constructor
     mGetNewFrame = true;
     mFrame = mAccessFrame = 0;
-    mFlipImage = 0;
+    mFlipImage = flipD0;
 
     if (!videoCapture.open(id))
         throw runtime_error("Failed to initialize camera");
@@ -107,11 +103,9 @@ void UCamera::init(int id) {
     UBindVar(UCamera, width);
     UBindVar(UCamera, height);
     UBindVar(UCamera, fps);
-    UBindVar(Ucamera, notifyImage);
-    UBindVar(UCamera, flipImage);
-    UBindVar(UCamera, cvImgNotify);
-    UBindVar(UCamera, uImgNotify);
-    flipImage = 0;
+    UBindVar(Ucamera, notify);
+    UBindVar(UCamera, flip);
+    flip = 0;
     
     // Bind all functions
     UBindThreadedFunction(UCamera, getImage, LOCK_INSTANCE);
@@ -119,10 +113,8 @@ void UCamera::init(int id) {
 
     // Notify if fps changed
     UNotifyChange(fps, &UCamera::fpsChanged);
-    UNotifyChange(notifyImage, &UCamera::changeNotifyImage);
-    UNotifyChange(cvImgNotify, &UCamera::changeNotifyImage);
-    UNotifyChange(uImgNotify, &UCamera::changeNotifyImage);
-    UNotifyChange(flipImage, &UCamera::changeFlipImage);
+    UNotifyChange(notify, &UCamera::changeNotifyImage);
+    UNotifyChange(flip, &UCamera::changeFlipImage);
 
     // Get image size
     videoCapture >> mMatImage;
@@ -160,10 +152,19 @@ void UCamera::grabImageThreadFunction() {
             // Try to populate data
             if (grabImageMutex.try_lock()) {
                 videoCapture.retrieve(mMatImage);
-                if (mFlipImage) {
-                    Mat tmp;
-                    flip(mMatImage, tmp, -1);
-                    transpose(tmp, mMatImage);
+                Mat tmp;
+                switch (mFlipImage) {
+                case flipD90:
+                	cv::flip(mMatImage, tmp, 1);
+                	transpose(tmp, mMatImage);
+                	break;
+                case flipD180:
+                	cv::flip(mMatImage, mMatImage, -1);
+                	break;
+                case flipD270:
+                	cv::flip(mMatImage, tmp, 0);
+                	transpose(tmp, mMatImage);
+                	break;
                 }
                 cvtColor(mMatImage, mMatImage, CV_BGR2RGB);
                 grabImageCond.notify_one();
@@ -206,9 +207,31 @@ void UCamera::changeNotifyImage(UVar& var) {
 
 
 void UCamera::changeFlipImage() {
-    mFlipImage = flipImage.as<bool>();
-    mBinImage.image.width = mFlipImage ? height.as<size_t > () : width.as<size_t > ();
-    mBinImage.image.height = mFlipImage ? width.as<size_t > () : height.as<size_t > ();
+    int tmp = flip.as<int>();
+    if (((flip == 0 || flip == 2) && (mFlipImage == flipD90 || mFlipImage == flipD270)) ||
+    		((flip == 1 || flip == 3) && (mFlipImage == flipD0 || mFlipImage == flipD180))) {
+    	width = mMatImage.rows;
+    	height = mMatImage.cols;
+    }
+    switch(tmp) {
+    case 0:
+    	mFlipImage = flipD0;
+    	break;
+    case 1:
+    	mFlipImage = flipD90;
+       	break;
+    case 2:
+    	mFlipImage = flipD180;
+    	break;
+    case 3:
+    	mFlipImage = flipD270;
+    	break;
+    default:
+    	throw runtime_error("flip should be from 0 to 3");
+    	break;
+    }
+    mBinImage.image.width = width.as<size_t > ();
+    mBinImage.image.height = height.as<size_t > ();
 }
 
 int UCamera::update() {
