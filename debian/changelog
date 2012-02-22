@@ -1,3 +1,9 @@
+liburbicamera2.7 (0.0.1-0ubuntu0ppa7~lucid1) lucid; urgency=low
+
+  * Zmiana notifyImage->notify.
+
+ -- Adam Oleksy <adam.oleksy@pwr.wroc.pl>  Wed, 22 Feb 2012 13:22:34 +0100
+
 liburbicamera2.7 (0.0.1-0ubuntu0ppa6~lucid1) lucid; urgency=low
 
   * Poprawienie zależności czasu budowania
