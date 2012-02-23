@@ -1,3 +1,9 @@
+liburbicamera2.7 (0.0.1-0ubuntu0ppa8~lucid1) lucid; urgency=low
+
+  * Dodanie paczki liburbimovedetector2.7
+
+ -- Adam Oleksy <adam.oleksy@pwr.wroc.pl>  Thu, 23 Feb 2012 10:35:55 +0100
+
 liburbicamera2.7 (0.0.1-0ubuntu0ppa7~lucid1) lucid; urgency=low
 
   * Zmiana notifyImage->notify.
