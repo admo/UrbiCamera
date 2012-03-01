@@ -48,4 +48,4 @@ set_target_properties (ufacet PROPERTIES
   VERSION 0.0.1
   SOVERSION 0.0.1)
   
-install (TARGETS ucamera ucolordetector uobjectdetector umovedetector DESTINATION lib/gostai/uobjects COMPONENT libraries)
+install (TARGETS ufacet ucamera ucolordetector uobjectdetector umovedetector DESTINATION lib/gostai/uobjects COMPONENT libraries)
