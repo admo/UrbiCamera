@@ -1,7 +1,7 @@
 Source: liburbicamera2.7
 Priority: extra
 Maintainer: Adam Oleksy <adam.oleksy@pwr.wroc.pl>
-Build-Depends: debhelper (>= 7.0.50~), cmake, libboost-dev, libboost-thread-dev, urbi-dev, libcv-dev, libcvaux-dev, libhighgui-dev
+Build-Depends: debhelper (>= 7.0.50~), cmake, libboost-dev, libboost-thread-dev, urbi-dev, libcv-dev, libcvaux-dev, libhighgui-dev, libfacet-dev
 Standards-Version: 3.9.1
 Section: libs
 
