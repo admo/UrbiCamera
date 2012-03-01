@@ -13,15 +13,21 @@
 #include <list>
 #include <string>
 
+#include <boost/scoped_ptr.hpp>
+
 #include <urbi/uobject.hh>
 
 #include <cv.h>
 #include <highgui.h>
 
+#include <iostream>
+
 #include "facet.h"
 
 using namespace cv;
 using namespace urbi;
+using namespace std;
+using namespace boost;
 
 class UFacet: public UObject {
 public:
@@ -34,27 +40,24 @@ private:
 	void changeNotifyImage(UVar&); // change mode function
 	void changeScale(UVar&); // change scale function
 	bool loadSettings(const std::string); // load algorithms parameters
-	void detectFrom(UImage);
-	void SetImage(UImage); // image processing function
+	void detectFrom(UImage); // image processing function
+	void SetImage(UImage);
 
 	Mat mResultImage;
 
-	CvHaarClassifierCascade* cv_cascade; // haar cascade container
-	CvMemStorage* storage; // haar storage container
-
 	int64 mLastTick;
 
-	Facet facet;
+	scoped_ptr<Facet> mFacet;
 
 	// Variables definig the class states
-	UVar notifyImage;
+	UVar notify;
 	UVar mode;
 	UVar scale; // image scale
 	UVar width; // image width
 	UVar height; // image height
 	UVar fps; // fps processing
 	UVar image; //image after processing
-	UVar *mInputImage;
+	scoped_ptr<UVar> mInputImage;
 	UBinary mBinImage;
 
 	UVar faces; // number of detected faces
@@ -96,7 +99,7 @@ private:
 };
 
 UFacet::UFacet(const std::string& s) :
-		UObject(s) {
+		UObject(s), mFacet(NULL), mInputImage(NULL) {
 	UBindFunction(UFacet, init);
 }
 
@@ -104,21 +107,21 @@ UFacet::~UFacet() {
 	// Prevent of double free error
 	if (mBinImage.image.data == mResultImage.data)
 		mBinImage.image.data = 0;
-
-	if (mInputImage)
-		delete mInputImage;
 }
 
 int UFacet::init(UVar& sourceImage) {
 
 	UBindVars(
 			UFacet,
-			notifyImage, mode, scale, width, height, fps, image, faces, roix, roiy, angle, LEbBnd, LEbDcl, LEyOpn, LEbHgt, REbBnd, REbDcl, REyOpn, REbHgt, LiAspt, LLiCnr, RLiCnr, Wrnkls, Nstrls, TeethA);
+			notify, mode, scale, width, height, fps, image, faces, roix, roiy, angle, LEbBnd, LEbDcl, LEyOpn, LEbHgt, REbBnd, REbDcl, REyOpn, REbHgt, LiAspt, LLiCnr, RLiCnr, Wrnkls, Nstrls, TeethA);
 
 	// Bind functions
 	UBindThreadedFunction(UFacet, detectFrom, LOCK_INSTANCE);
 	UBindThreadedFunction(UFacet, SetImage, LOCK_INSTANCE);
 	UBindFunction(UFacet, loadSettings);
+
+	mBinImage.type = BINARY_IMAGE;
+	mBinImage.image.imageFormat = IMAGE_RGB;
 
 	// set default parameters
 	scale = 1;
@@ -127,42 +130,23 @@ int UFacet::init(UVar& sourceImage) {
 	mode = 0;
 	faces = 0;
 
-	mInputImage = new UVar(sourceImage);
+	mInputImage.reset(new UVar(sourceImage));
+
+	mFacet.reset(new Facet);
 
 	UNotifyChange(scale, &UFacet::changeScale);
 	UNotifyChange(mode, &UFacet::changeNotifyImage);
 
-	//initialize container
-	ubin.type = BINARY_UNKNOWN;
-	ubin.common.size = sizeof(IplImage);
-	cout << "UFACET initialized correctly." << endl;
-
 	return 0;
 }
 
-//
-// Mode change function
-//
-void UFacet::changeMode(UVar&) {
-	int tmp = mode;
-	switch (tmp) {
-	case 0:
-		source->unnotify();
-		input.unnotify();
-		break;
-	case 1:
-		// notiffy function change follows from mode
-		input.unnotify();
-		UNotifyChange(*source, &UFacet::SetImage);
-		break;
-	case 2:
-		// notiffy function change follows from mode
-		source->unnotify();
-		UNotifyChange(input, &UFacet::SetImage);
-		break;
-	}
-	cout << "UFacET mode set " << tmp << endl;
-	return;
+void UFacet::changeNotifyImage(UVar& var) {
+	mInputImage->unnotify();
+	if (var.as<bool>())
+		UNotifyChange(*mInputImage, &UFacet::detectFrom);
+
+	mode = var.as<bool>();
+	notify = var.as<bool>();
 }
 
 void UFacet::changeScale(UVar& newScale) {
@@ -175,63 +159,38 @@ void UFacet::changeScale(UVar& newScale) {
 // Load FacET algorithms parameters
 //
 bool UFacet::loadSettings(string path) {
-	need_update = true;
 	if (path == "")
-		return facet.readSettings("default.cfg");
+		return mFacet->readSettings();
 	else
-		return facet.readSettings(path);
+		return mFacet->readSettings(path);
 }
 
 //
 // Image processing function (if image source changes)
 //
-void UFacet::SetImage(UImage src) {
+void UFacet::detectFrom(UImage sourceImage) {
 
-	// set UBinary
-	// get the pointer of frame from UBinary
-	IplImage* img = (IplImage*) src.common.data;
-	if (!img)
-		return;
+	Mat processImage(Size(sourceImage.width, sourceImage.height), CV_8UC3,
+			sourceImage.data);
 
-	if (need_update) {
-		need_update = false;
+	Mat resizedImage(cvRound(processImage.rows / scale.as<double>()),
+			cvRound(processImage.cols / scale.as<double>()), CV_8UC1);
+	resize(processImage, resizedImage, resizedImage.size(), 0, 0, INTER_LINEAR);
+	width = resizedImage.cols;
+	height = resizedImage.rows;
 
-		// Release previous created image
-		cvReleaseImage(&smallimg);
-
-		// Create a new image based on the input image and new parameters
-		smallimg = cvCreateImage(
-				cvSize((img->width / (double) scale),
-						(img->height / (double) scale)), 8, 3);
-
-		// Create new Uimage parameters
-		uimage.width = smallimg->width;
-		uimage.height = smallimg->height;
-		uimage.imageFormat = IMAGE_RGB;
-		uimage.data = 0;
-		uimage.size = smallimg->width * smallimg->height * 3;
-		width = uimage.width;
-		height = uimage.height;
-	}
-
-	// Resize or copy new image to smallimg variable
-	if (((double) scale) != 1)
-		cvResize(img, smallimg, CV_INTER_LINEAR);
-	else
-		cvCopy(img, smallimg, 0);
-
-	// ...to measure all processing time
-	double t = (double) cvGetTickCount();
-
-	// Compute fps - algorithm efficency
-	fps = ((double) cvGetTickFrequency() * 1000000) / (t - tick);
-	tick = t;
+	//Compute fps - algorithm efficency
+	int64 startTick = getTickCount();
+	fps = static_cast<double>(getTickFrequency()) / (startTick - mLastTick);
+	mLastTick = startTick;
+	double timestamp = (double) mLastTick / getTickFrequency();
 
 	//////////////////////////////////////////////////////////
 	// FACET  FACET  FACET  FACET  FACET  FACET  FACET  FACET
+	IplImage iplimg = resizedImage;
 
-	facet.face.clearElements();
-	facet.detectFeat(smallimg, smallimg);
+	mFacet->face.clearElements();
+	mFacet->detectFeat(&iplimg, &iplimg);
 
 	vec_roix.clear();
 	vec_roiy.clear();
@@ -250,10 +209,10 @@ void UFacet::SetImage(UImage src) {
 	vec_Wrnkls.clear();
 	vec_Nstrls.clear();
 	vec_TeethA.clear();
-	faces = facet.facesList.size();
+	faces = mFacet->facesList.size();
 
-	for (std::list<facepar_t>::iterator iter = facet.facesList.begin();
-			iter != facet.facesList.end(); ++iter) {
+	for (std::list<facepar_t>::iterator iter = mFacet->facesList.begin();
+			iter != mFacet->facesList.end(); ++iter) {
 		vec_roix.push_back(iter->roix);
 		vec_roiy.push_back(iter->roiy);
 		vec_angle.push_back(iter->angle);
@@ -291,21 +250,18 @@ void UFacet::SetImage(UImage src) {
 	Nstrls = vec_Nstrls;
 	TeethA = vec_TeethA;
 
-	facet.cleanFacesList();
+	mFacet->cleanFacesList();
 
-	// FACET  FACET  FACET  FACET  FACET  FACET  FACET  FACET
-	//////////////////////////////////////////////////////////
+	// Copy mResult image to UImage
+	mBinImage.image.width = resizedImage.cols;
+	mBinImage.image.height = resizedImage.rows;
+	mBinImage.image.size = resizedImage.cols * resizedImage.rows * 3;
+	mBinImage.image.data = resizedImage.data;
+	image = mBinImage;
+}
 
-	t = (double) cvGetTickCount() - t;
-	time = t / ((double) cvGetTickFrequency() * 1000.);
-
-	// Assign image to UBinary variable.
-	ubin.common.data = smallimg;
-	cvimg = ubin;
-
-	// Save to UImage also
-	uimage.data = (unsigned char*) smallimg->imageData;
-	uimg = uimage;
+void UFacet::SetImage(UImage image) {
+	detectFrom(image);
 }
 
 UStart(UFacet);
