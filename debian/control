@@ -9,33 +9,38 @@ Package: liburbicamera2.7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Urbi module for video cameras
+ Urbi module which provides webcams through OpenCV SDK
 
 Package: liburbicolordetector2.7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Urbi module to detect colors in the images
+ Urbi module which provides detection of colors in the images.
+ This module is based on color detector implemented in OpenCV.
 
 Package: liburbiobjectdetector2.7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Urbi module to detect object in the images
+ Urbi module which provides detection of object in the images.
+ This module is based on Haar cascades algorithm implemented in OpenCV.
 
 Package: liburbimovedetector2.7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Urbi module to detect movement in the images
+ Urbi module which provides detection of movement in a series
+ of images. This module is based on movement detector implemented
+ in OpenCV
 
 Package: liburbifacet2.7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Urbi module to detect facial features in the images
+ Urbi module which provides detection of facial expresion features.
+ This module is based on FacET detector.
